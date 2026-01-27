@@ -100,26 +100,25 @@ function calculate() {
 
 async function fetchLive() {
   try {
-    const g = await fetch("https://gold-proxy.ba58cf4d2882d5d8b58879344a9e53cd.workers.dev")
+    const res = await fetch("https://gold-proxy.avilupo.workers.dev");
+    const data = await res.json();
 
-    }).then(r => r.json());
+    // Gold
+    goldInput.value = data.gold.price.toFixed(2);
 
-    el("goldUSDoz").value = g.price.toFixed(2);
+    // FX
+    usdIlsInput.value = data.usdIls.toFixed(3);
 
-    const fx = await fetch(
-      "https://api.exchangerate.host/latest?base=USD&symbols=ILS"
-    ).then(r => r.json());
-
-    el("usdIls").value = fx.rates.ILS.toFixed(3);
-
-    el("spotInfo").textContent =
-      `Gold bid ${g.bid.toFixed(2)} / ask ${g.ask.toFixed(2)} USD — ` +
-      new Date(g.timestamp * 1000).toLocaleString();
+    const ts = new Date(data.gold.timestamp * 1000).toLocaleString();
+    spotInfo.textContent =
+      `Gold bid ${data.gold.bid.toFixed(2)} / ask ${data.gold.ask.toFixed(2)} USD — ${ts}`;
 
   } catch {
     alert("Failed to fetch live prices");
   }
   calculate();
+}
+
 }
 
 document.getElementById("fetchBtn").addEventListener("click", fetchLive);
@@ -129,4 +128,5 @@ document.querySelectorAll("input, select")
 
 </body>
 </html>
+
 
