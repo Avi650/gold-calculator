@@ -100,8 +100,8 @@ function calculate() {
 
 async function fetchLive() {
   try {
-    const g = await fetch("https://www.goldapi.io/api/XAU/USD", {
-      headers: { "x-access-token": GOLD_API_KEY }
+    const g = await fetch("https://gold-proxy.ba58cf4d2882d5d8b58879344a9e53cd.workers.dev")
+
     }).then(r => r.json());
 
     el("goldUSDoz").value = g.price.toFixed(2);
@@ -129,3 +129,4 @@ document.querySelectorAll("input, select")
 
 </body>
 </html>
+
