@@ -1,16 +1,14 @@
 <script defer>
-  "use strict";
-
 const GOLD_API_KEY = "goldapi-1g7qhsmkwetbhn-io";
 
 function calculate() {
-  const weight = Number(weightInput.value) || 0;
-  const karat = Number(karatInput.value) || 24;
-  const premium = Number(premiumInput.value) || 0;
-  const type = typeInput.value;
+  const weight = Number(document.getElementById("weight").value) || 0;
+  const karat = Number(document.getElementById("karat").value) || 24;
+  const premium = Number(document.getElementById("premium").value) || 0;
+  const type = document.getElementById("type").value;
 
-  const goldUSDoz = Number(goldInput.value) || 0;
-  const usdIls = Number(usdIlsInput.value) || 0;
+  const goldUSDoz = Number(document.getElementById("goldUSDoz").value) || 0;
+  const usdIls = Number(document.getElementById("usdIls").value) || 0;
 
   const purity = karat / 24;
   const pureGold = weight * purity;
@@ -21,57 +19,37 @@ function calculate() {
 
   const valueILS = valueUSD * usdIls;
 
-  usdValue.textContent = "$ " + valueUSD.toFixed(2);
-  ilsValue.textContent = "₪ " + Math.round(valueILS);
+  document.getElementById("usdValue").textContent = "$ " + valueUSD.toFixed(2);
+  document.getElementById("ilsValue").textContent = "₪ " + Math.round(valueILS);
 }
 
 async function fetchLive() {
   try {
-    // --- GOLD (real market spot with bid/ask) ---
     const goldRes = await fetch("https://www.goldapi.io/api/XAU/USD", {
-      headers: {
-        "x-access-token": GOLD_API_KEY
-      }
+      headers: { "x-access-token": GOLD_API_KEY }
     });
     const goldData = await goldRes.json();
 
-    if (!goldData.price) {
-      throw new Error("GoldAPI returned invalid data");
-    }
+    if (!goldData.price) throw new Error("Bad gold data");
 
-    goldInput.value = goldData.price.toFixed(2);
+    document.getElementById("goldUSDoz").value = goldData.price.toFixed(2);
 
-    // --- FX USD → ILS ---
     const fxRes = await fetch(
       "https://api.exchangerate.host/latest?base=USD&symbols=ILS"
     );
     const fxData = await fxRes.json();
 
-    usdIlsInput.value = fxData.rates.ILS.toFixed(3);
+    document.getElementById("usdIls").value = fxData.rates.ILS.toFixed(3);
 
     const ts = new Date(goldData.timestamp * 1000).toLocaleString();
-
-    spotInfo.textContent =
+    document.getElementById("spotInfo").textContent =
       `Gold bid ${goldData.bid.toFixed(2)} / ask ${goldData.ask.toFixed(2)} USD — ${ts}`;
-
   } catch (e) {
-    alert("Failed to fetch live prices.\nManual values remain valid.");
+    alert("Failed to fetch live prices.");
   }
 
   calculate();
 }
-
-// --- DOM bindings ---
-const weightInput = document.getElementById("weight");
-const karatInput = document.getElementById("karat");
-const premiumInput = document.getElementById("premium");
-const goldInput = document.getElementById("goldUSDoz");
-const usdIlsInput = document.getElementById("usdIls");
-const typeInput = document.getElementById("type");
-
-const usdValue = document.getElementById("usdValue");
-const ilsValue = document.getElementById("ilsValue");
-const spotInfo = document.getElementById("spotInfo");
 
 document.querySelectorAll("input, select").forEach(el =>
   el.addEventListener("input", calculate)
@@ -79,5 +57,3 @@ document.querySelectorAll("input, select").forEach(el =>
 
 calculate();
 </script>
-
-
