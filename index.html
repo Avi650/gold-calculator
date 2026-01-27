@@ -1,14 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gold Value Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f4f4f4;
+    padding: 20px;
+    max-width: 480px;
+    margin: auto;
+  }
+  h2 {
+    text-align: center;
+  }
+  label {
+    font-weight: 600;
+    margin-top: 12px;
+    display: block;
+  }
+  input, select, button {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    margin-top: 4px;
+  }
+  button {
+    margin-top: 14px;
+    cursor: pointer;
+  }
+  .result {
+    margin-top: 20px;
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+  }
+  .value {
+    font-size: 22px;
+    font-weight: bold;
+  }
+  .small {
+    font-size: 13px;
+    color: #555;
+    margin-top: 4px;
+  }
+  hr {
+    margin-top: 16px;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>Gold Value Calculator</h2>
+
+<label>Item Type</label>
+<select id="type">
+  <option value="scrap">Scrap / Jewelry</option>
+  <option value="coin">Bullion Coin</option>
+</select>
+
+<label>Weight (grams)</label>
+<input id="weight" type="number" step="0.01" value="31.1">
+
+<label>Karat</label>
+<select id="karat">
+  <option value="24">24k</option>
+  <option value="22" selected>22k</option>
+  <option value="21">21k</option>
+  <option value="18">18k</option>
+  <option value="14">14k</option>
+</select>
+
+<label>Coin Premium (%)</label>
+<input id="premium" type="number" step="0.1" value="4">
+
+<hr>
+
+<label>Gold Spot (USD / oz)</label>
+<input id="goldUSDoz" type="number" step="0.01" value="0">
+
+<label>USD → ILS</label>
+<input id="usdIls" type="number" step="0.001" value="0">
+
+<button onclick="fetchLive()">Fetch Live Prices</button>
+
+<div class="result">
+  <div class="value" id="ilsValue">₪ —</div>
+  <div class="small" id="usdValue">$ —</div>
+  <div class="small" id="spotInfo">Manual prices</div>
+</div>
+
 <script defer>
+/* ================= CONFIG ================= */
 const GOLD_API_KEY = "goldapi-1g7qhsmkwetbhn-io";
 
-function calculate() {
-  const weight = Number(document.getElementById("weight").value) || 0;
-  const karat = Number(document.getElementById("karat").value) || 24;
-  const premium = Number(document.getElementById("premium").value) || 0;
-  const type = document.getElementById("type").value;
+/* ================= HELPERS ================= */
+function el(id) {
+  return document.getElementById(id);
+}
+function num(id, fallback = 0) {
+  const e = el(id);
+  return e && e.value !== "" ? Number(e.value) || fallback : fallback;
+}
+function str(id, fallback = "") {
+  const e = el(id);
+  return e ? e.value : fallback;
+}
 
-  const goldUSDoz = Number(document.getElementById("goldUSDoz").value) || 0;
-  const usdIls = Number(document.getElementById("usdIls").value) || 0;
+/* ================= CALCULATION ================= */
+function calculate() {
+  const weight = num("weight");
+  const karat = num("karat", 24);
+  const premium = num("premium");
+  const type = str("type", "scrap");
+
+  const goldUSDoz = num("goldUSDoz");
+  const usdIls = num("usdIls");
+
+  if (!goldUSDoz || !usdIls) return;
 
   const purity = karat / 24;
   const pureGold = weight * purity;
@@ -19,41 +131,49 @@ function calculate() {
 
   const valueILS = valueUSD * usdIls;
 
-  document.getElementById("usdValue").textContent = "$ " + valueUSD.toFixed(2);
-  document.getElementById("ilsValue").textContent = "₪ " + Math.round(valueILS);
+  el("usdValue").textContent = "$ " + valueUSD.toFixed(2);
+  el("ilsValue").textContent = "₪ " + Math.round(valueILS);
 }
 
+/* ================= LIVE FETCH ================= */
 async function fetchLive() {
   try {
+    // GOLD (real market)
     const goldRes = await fetch("https://www.goldapi.io/api/XAU/USD", {
       headers: { "x-access-token": GOLD_API_KEY }
     });
-    const goldData = await goldRes.json();
+    const gold = await goldRes.json();
 
-    if (!goldData.price) throw new Error("Bad gold data");
+    if (!gold.price) throw new Error("Gold API error");
 
-    document.getElementById("goldUSDoz").value = goldData.price.toFixed(2);
+    el("goldUSDoz").value = gold.price.toFixed(2);
 
+    // FX USD → ILS
     const fxRes = await fetch(
       "https://api.exchangerate.host/latest?base=USD&symbols=ILS"
     );
-    const fxData = await fxRes.json();
+    const fx = await fxRes.json();
 
-    document.getElementById("usdIls").value = fxData.rates.ILS.toFixed(3);
+    el("usdIls").value = fx.rates.ILS.toFixed(3);
 
-    const ts = new Date(goldData.timestamp * 1000).toLocaleString();
-    document.getElementById("spotInfo").textContent =
-      `Gold bid ${goldData.bid.toFixed(2)} / ask ${goldData.ask.toFixed(2)} USD — ${ts}`;
-  } catch (e) {
-    alert("Failed to fetch live prices.");
+    const ts = new Date(gold.timestamp * 1000).toLocaleString();
+    el("spotInfo").textContent =
+      `Gold bid ${gold.bid.toFixed(2)} / ask ${gold.ask.toFixed(2)} USD — ${ts}`;
+
+  } catch (err) {
+    alert("Failed to fetch live prices.\nManual values remain valid.");
   }
 
   calculate();
 }
 
-document.querySelectorAll("input, select").forEach(el =>
-  el.addEventListener("input", calculate)
-);
-
-calculate();
+/* ================= EVENTS ================= */
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("input, select").forEach(e =>
+    e.addEventListener("input", calculate)
+  );
+});
 </script>
+
+</body>
+</html>
