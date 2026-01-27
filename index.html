@@ -166,14 +166,47 @@ async function fetchLive() {
 
   calculate();
 }
+function v(id, fallback = 0) {
+  const el = document.getElementById(id);
+  return el && el.value !== "" ? Number(el.value) || fallback : fallback;
+}
 
-/* ================= EVENTS ================= */
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll("input, select").forEach(e =>
-    e.addEventListener("input", calculate)
+function s(id, fallback = "") {
+  const el = document.getElementById(id);
+  return el ? el.value : fallback;
+}
+
+function calculate() {
+  const weight = v("weight");
+  const karat = v("karat", 24);
+  const premium = v("premium");
+  const type = s("type", "scrap");
+
+  const goldUSDoz = v("goldUSDoz");
+  const usdIls = v("usdIls");
+
+  if (!goldUSDoz || !usdIls) return;
+
+  const purity = karat / 24;
+  const pureGold = weight * purity;
+  const usdPerGram = goldUSDoz / 31.1035;
+
+  let valueUSD = pureGold * usdPerGram;
+  if (type === "coin") valueUSD *= (1 + premium / 100);
+
+  const valueILS = valueUSD * usdIls;
+
+  const usdEl = document.getElementById("usdValue");
+  const ilsEl = document.getElementById("ilsValue");
+
+  if (usdEl) usdEl.textContent = "$ " + valueUSD.toFixed(2);
+  if (ilsEl) ilsEl.textContent = "₪ " + Math.round(valueILS);
+}
+
   );
 });
 </script>
 
 </body>
 </html>
+
