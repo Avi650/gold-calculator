@@ -113,10 +113,14 @@ async function fetchLive() {
     spotInfo.textContent =
       `Gold bid ${data.gold.bid.toFixed(2)} / ask ${data.gold.ask.toFixed(2)} USD — ${ts}`;
 
-  } catch {
+  } catch (e) {
     alert("Failed to fetch live prices");
+    console.error(e);
   }
+
   calculate();
+}
+
 }
 
 }
@@ -128,5 +132,6 @@ document.querySelectorAll("input, select")
 
 </body>
 </html>
+
 
 
