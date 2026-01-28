@@ -167,20 +167,10 @@ input, select {
     <div class="value-small" id="usdValue">$ —</div>
     <div class="value-small" id="fxInfo">—</div>
   </div>
-
-  <!-- CHART -->
-  <div class="card chart-card">
-    <div class="chart-controls">
-      <button class="active" data-range="1D">1D</button>
-      <button data-range="1W">1W</button>
-      <button data-range="1M">1M</button>
-      <button data-range="1Y">1Y</button>
-      <button data-range="5Y">5Y</button>
-      <button data-range="10Y">10Y</button>
-    </div>
-    <canvas id="goldChart"></canvas>
-  </div>
-
+  
+<!-- COIN IMAGE -->
+<div class="card chart-card coin-card">
+  <img src="coin.png" alt="Gold Coin">
 </div>
 
 <script>
@@ -319,3 +309,4 @@ loadGoldHistory("1D");
 
 </body>
 </html>
+
