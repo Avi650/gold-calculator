@@ -31,7 +31,7 @@ body {
 h1 {
   text-align: center;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .subtitle {
@@ -105,7 +105,9 @@ input, select {
 
 .chart-card {
   grid-column: 1 / -1;
+  height: 300px;
 }
+
 .chart-controls {
   display: flex;
   gap: 8px;
@@ -176,16 +178,31 @@ input, select {
       <button data-range="5Y">5Y</button>
       <button data-range="10Y">10Y</button>
     </div>
-    <canvas id="goldChart" height="120"></canvas>
+    <canvas id="goldChart"></canvas>
   </div>
 
 </div>
 
 <script>
-/* ===== FX TOGGLE STATE ===== */
-let fxMode = "market";
+/* ================= CONFIG ================= */
+const WORKER_URL = "https://gold-proxy.avilupo.workers.dev";
+const TD_API_KEY = "YOUR_TWELVE_DATA_KEY";
 
-/* ===== TOGGLE HANDLERS ===== */
+/* ================= DOM ================= */
+const weight = document.getElementById("weight");
+const karat = document.getElementById("karat");
+const premium = document.getElementById("premium");
+const ilsValue = document.getElementById("ilsValue");
+const usdValue = document.getElementById("usdValue");
+const fxInfo = document.getElementById("fxInfo");
+const marketBtn = document.getElementById("marketBtn");
+const boiBtn = document.getElementById("boiBtn");
+
+/* ================= STATE ================= */
+let fxMode = "market";
+let workerData = null;
+
+/* ================= FX TOGGLE ================= */
 marketBtn.onclick = () => setFx("market");
 boiBtn.onclick = () => setFx("boi");
 
@@ -196,56 +213,56 @@ function setFx(mode) {
   calculate();
 }
 
-/* ===== CALCULATION ===== */
-let workerData = null;
-
+/* ================= LOAD LIVE DATA ================= */
 async function loadPrices() {
-  const res = await fetch("https://gold-proxy.avilupo.workers.dev");
+  const res = await fetch(WORKER_URL);
   workerData = await res.json();
   calculate();
 }
 
+/* ================= CALCULATION ================= */
 function calculate() {
   if (!workerData) return;
 
   const w = +weight.value;
-  const k = +karat.value / 24;
-  const p = +premium.value / 100;
+  const purity = +karat.value / 24;
+  const prem = +premium.value / 100;
 
-  const goldUsd = workerData.gold.price / 31.1035;
-  let usd = w * k * goldUsd * (1 + p);
+  const usdPerGram = workerData.gold.price / 31.1035;
+  const usd = w * purity * usdPerGram * (1 + prem);
 
-  const fx =
-    fxMode === "market"
-      ? workerData.fx.market.usdIls
-      : workerData.fx.boi.usdIls;
+  const fx = fxMode === "market"
+    ? workerData.fx.market.usdIls
+    : workerData.fx.boi.usdIls;
 
   ilsValue.textContent = "₪ " + Math.round(usd * fx);
   usdValue.textContent = "$ " + usd.toFixed(2);
 
-  fxInfo.textContent =
-    fxMode === "market"
-      ? "Market FX"
-      : "BOI " + workerData.fx.boi.date;
+  fxInfo.textContent = fxMode === "market"
+    ? "Market FX"
+    : "BOI " + workerData.fx.boi.date;
 }
 
 document.querySelectorAll("input, select")
-  .forEach(e => e.oninput = calculate);
+  .forEach(e => e.addEventListener("input", calculate));
 
-/* ===== CHART (placeholder data hook) ===== */
+/* ================= CHART ================= */
 const ctx = document.getElementById("goldChart");
-const chart = new Chart(ctx, {
+const goldChart = new Chart(ctx, {
   type: "line",
   data: {
     labels: [],
     datasets: [{
-      label: "Gold USD/oz",
       data: [],
       borderColor: "#3dd6c6",
-      tension: 0.25
+      borderWidth: 2,
+      tension: 0.25,
+      pointRadius: 0
     }]
   },
   options: {
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
       x: { ticks: { color: "#9aa3c7" } },
@@ -254,15 +271,7 @@ const chart = new Chart(ctx, {
   }
 });
 
-loadPrices();
-</script>
-
-</body>
-</html>
-<script>
-const TD_API_KEY = "8b291683617a44dcb73e71ac6c10271f";
-
-/* ===== RANGE → API INTERVAL MAP ===== */
+/* ================= HISTORICAL GOLD ================= */
 const RANGE_MAP = {
   "1D": { interval: "15min", output: 96 },
   "1W": { interval: "1h", output: 168 },
@@ -272,31 +281,27 @@ const RANGE_MAP = {
   "10Y": { interval: "1month", output: 120 }
 };
 
-/* ===== LOAD HISTORICAL GOLD ===== */
 async function loadGoldHistory(range) {
   const cfg = RANGE_MAP[range];
   if (!cfg) return;
 
-  const url = `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${cfg.interval}&outputsize=${cfg.output}&apikey=${TD_API_KEY}`;
+  const url =
+    `https://api.twelvedata.com/time_series` +
+    `?symbol=XAU/USD&interval=${cfg.interval}` +
+    `&outputsize=${cfg.output}&apikey=${TD_API_KEY}`;
 
   const res = await fetch(url);
   const data = await res.json();
-
-  if (!data.values) {
-    console.error("Historical gold fetch failed", data);
-    return;
-  }
+  if (!data.values) return;
 
   const values = data.values.reverse();
-
   goldChart.data.labels = values.map(v => v.datetime);
   goldChart.data.datasets[0].data =
     values.map(v => parseFloat(v.close));
-
   goldChart.update();
 }
 
-/* ===== CHART BUTTONS ===== */
+/* ================= CHART BUTTONS ================= */
 document.querySelectorAll(".chart-controls button")
   .forEach(btn => {
     btn.onclick = () => {
@@ -307,7 +312,10 @@ document.querySelectorAll(".chart-controls button")
     };
   });
 
-/* ===== INITIAL LOAD ===== */
+/* ================= INIT ================= */
+loadPrices();
 loadGoldHistory("1D");
 </script>
 
+</body>
+</html>
