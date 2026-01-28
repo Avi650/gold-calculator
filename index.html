@@ -259,3 +259,55 @@ loadPrices();
 
 </body>
 </html>
+<script>
+const TD_API_KEY = "8b291683617a44dcb73e71ac6c10271f";
+
+/* ===== RANGE → API INTERVAL MAP ===== */
+const RANGE_MAP = {
+  "1D": { interval: "15min", output: 96 },
+  "1W": { interval: "1h", output: 168 },
+  "1M": { interval: "1day", output: 30 },
+  "1Y": { interval: "1week", output: 52 },
+  "5Y": { interval: "1month", output: 60 },
+  "10Y": { interval: "1month", output: 120 }
+};
+
+/* ===== LOAD HISTORICAL GOLD ===== */
+async function loadGoldHistory(range) {
+  const cfg = RANGE_MAP[range];
+  if (!cfg) return;
+
+  const url = `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${cfg.interval}&outputsize=${cfg.output}&apikey=${TD_API_KEY}`;
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (!data.values) {
+    console.error("Historical gold fetch failed", data);
+    return;
+  }
+
+  const values = data.values.reverse();
+
+  goldChart.data.labels = values.map(v => v.datetime);
+  goldChart.data.datasets[0].data =
+    values.map(v => parseFloat(v.close));
+
+  goldChart.update();
+}
+
+/* ===== CHART BUTTONS ===== */
+document.querySelectorAll(".chart-controls button")
+  .forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".chart-controls button")
+        .forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      loadGoldHistory(btn.dataset.range);
+    };
+  });
+
+/* ===== INITIAL LOAD ===== */
+loadGoldHistory("1D");
+</script>
+
