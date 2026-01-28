@@ -2,15 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Lupo’s Gold Valuator</title>
+<title>Lupo’s Use-At-Your-Own-Risk Gold Valuator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 :root {
-  --bg: #1e2337;
+  --bg: #1c2236;
   --card: #2a3050;
   --accent: #3dd6c6;
   --text: #e6e8f0;
@@ -21,7 +18,7 @@
 
 body {
   margin: 0;
-  padding: 24px;
+  padding: 28px;
   background: var(--bg);
   font-family: -apple-system, BlinkMacSystemFont,
                "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -36,9 +33,9 @@ h1 {
 
 .subtitle {
   text-align: center;
-  color: var(--muted);
   font-size: 14px;
-  margin-bottom: 24px;
+  color: var(--muted);
+  margin-bottom: 28px;
 }
 
 .container {
@@ -50,9 +47,9 @@ h1 {
 }
 
 .card {
-  background: linear-gradient(180deg, #2e355c, var(--card));
-  border-radius: 14px;
-  padding: 18px;
+  background: linear-gradient(180deg, #30386a, var(--card));
+  border-radius: 16px;
+  padding: 20px;
 }
 
 label {
@@ -67,34 +64,37 @@ input, select {
   padding: 10px;
   border-radius: 8px;
   border: none;
-  background: #1e2337;
+  background: #1c2236;
   color: var(--text);
+  font-size: 15px;
 }
 
 .value-big {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 700;
 }
 
 .value-small {
-  color: var(--muted);
   margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .toggle {
   display: flex;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .toggle button {
   flex: 1;
-  background: #1e2337;
+  background: #1c2236;
   border: none;
   padding: 10px;
   border-radius: 8px;
   color: var(--muted);
   cursor: pointer;
+  font-size: 14px;
 }
 
 .toggle button.active {
@@ -103,29 +103,21 @@ input, select {
   font-weight: 600;
 }
 
-.chart-card {
+.coin-card {
   grid-column: 1 / -1;
-  height: 300px;
-}
-
-.chart-controls {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  justify-content: center;
+  padding: 30px;
 }
 
-.chart-controls button {
-  background: #1e2337;
-  border: none;
-  color: var(--muted);
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.chart-controls button.active {
-  background: var(--accent);
-  color: #000;
+.coin-card img {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  border-radius: 50%;
+  box-shadow:
+    0 0 40px rgba(255, 215, 100, 0.25),
+    inset 0 0 20px rgba(255,255,255,0.1);
 }
 </style>
 </head>
@@ -139,7 +131,7 @@ input, select {
 
 <div class="container">
 
-  <!-- INPUT CARD -->
+  <!-- INPUTS -->
   <div class="card">
     <label>Weight (grams)</label>
     <input id="weight" type="number" value="31.1">
@@ -156,7 +148,7 @@ input, select {
     <input id="premium" type="number" value="4">
   </div>
 
-  <!-- VALUE CARD -->
+  <!-- VALUE -->
   <div class="card">
     <div class="toggle">
       <button id="marketBtn" class="active">Market</button>
@@ -165,20 +157,22 @@ input, select {
 
     <div class="value-big" id="ilsValue">₪ —</div>
     <div class="value-small" id="usdValue">$ —</div>
-    <div class="value-small" id="fxInfo">—</div>
+    <div class="value-small" id="fxInfo">Loading prices…</div>
   </div>
-  
-<!-- COIN IMAGE -->
-<div class="card chart-card coin-card">
-  <img src="coin.png" alt="Gold Coin">
+
+  <!-- IMAGE -->
+  <div class="card coin-card">
+    <img src="coin.png" alt="Gold Coin">
+  </div>
+
 </div>
 
 <script>
-/* ================= CONFIG ================= */
-const WORKER_URL = "https://gold-proxy.avilupo.workers.dev";
-const TD_API_KEY = "YOUR_TWELVE_DATA_KEY";
+/* ========= STATE ========= */
+let fxMode = "market";
+let workerData = null;
 
-/* ================= DOM ================= */
+/* ========= ELEMENTS ========= */
 const weight = document.getElementById("weight");
 const karat = document.getElementById("karat");
 const premium = document.getElementById("premium");
@@ -188,11 +182,7 @@ const fxInfo = document.getElementById("fxInfo");
 const marketBtn = document.getElementById("marketBtn");
 const boiBtn = document.getElementById("boiBtn");
 
-/* ================= STATE ================= */
-let fxMode = "market";
-let workerData = null;
-
-/* ================= FX TOGGLE ================= */
+/* ========= TOGGLE ========= */
 marketBtn.onclick = () => setFx("market");
 boiBtn.onclick = () => setFx("boi");
 
@@ -203,110 +193,50 @@ function setFx(mode) {
   calculate();
 }
 
-/* ================= LOAD LIVE DATA ================= */
+/* ========= FETCH ========= */
 async function loadPrices() {
-  const res = await fetch(WORKER_URL);
-  workerData = await res.json();
-  calculate();
+  try {
+    const res = await fetch("https://gold-proxy.avilupo.workers.dev");
+    workerData = await res.json();
+    calculate();
+  } catch {
+    fxInfo.textContent = "Failed to load prices";
+  }
 }
 
-/* ================= CALCULATION ================= */
+/* ========= CALC ========= */
 function calculate() {
-  if (!workerData) return;
+  if (!workerData?.gold) return;
 
-  const w = +weight.value;
-  const purity = +karat.value / 24;
-  const prem = +premium.value / 100;
+  const w = Number(weight.value) || 0;
+  const k = Number(karat.value) / 24;
+  const p = Number(premium.value) / 100;
 
   const usdPerGram = workerData.gold.price / 31.1035;
-  const usd = w * purity * usdPerGram * (1 + prem);
+  const usd = w * k * usdPerGram * (1 + p);
 
-  const fx = fxMode === "market"
-    ? workerData.fx.market.usdIls
-    : workerData.fx.boi.usdIls;
+  const fx =
+    fxMode === "market"
+      ? workerData.fx?.market?.usdIls
+      : workerData.fx?.boi?.usdIls;
+
+  if (!fx) return;
 
   ilsValue.textContent = "₪ " + Math.round(usd * fx);
   usdValue.textContent = "$ " + usd.toFixed(2);
 
-  fxInfo.textContent = fxMode === "market"
-    ? "Market FX"
-    : "BOI " + workerData.fx.boi.date;
+  fxInfo.textContent =
+    fxMode === "market"
+      ? "Market FX"
+      : "BOI " + workerData.fx.boi.date;
 }
 
+/* ========= EVENTS ========= */
 document.querySelectorAll("input, select")
-  .forEach(e => e.addEventListener("input", calculate));
+  .forEach(el => el.addEventListener("input", calculate));
 
-/* ================= CHART ================= */
-const ctx = document.getElementById("goldChart");
-const goldChart = new Chart(ctx, {
-  type: "line",
-  data: {
-    labels: [],
-    datasets: [{
-      data: [],
-      borderColor: "#3dd6c6",
-      borderWidth: 2,
-      tension: 0.25,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: "#9aa3c7" } },
-      y: { ticks: { color: "#9aa3c7" } }
-    }
-  }
-});
-
-/* ================= HISTORICAL GOLD ================= */
-const RANGE_MAP = {
-  "1D": { interval: "15min", output: 96 },
-  "1W": { interval: "1h", output: 168 },
-  "1M": { interval: "1day", output: 30 },
-  "1Y": { interval: "1week", output: 52 },
-  "5Y": { interval: "1month", output: 60 },
-  "10Y": { interval: "1month", output: 120 }
-};
-
-async function loadGoldHistory(range) {
-  const cfg = RANGE_MAP[range];
-  if (!cfg) return;
-
-  const url =
-    `https://api.twelvedata.com/time_series` +
-    `?symbol=XAU/USD&interval=${cfg.interval}` +
-    `&outputsize=${cfg.output}&apikey=${TD_API_KEY}`;
-
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!data.values) return;
-
-  const values = data.values.reverse();
-  goldChart.data.labels = values.map(v => v.datetime);
-  goldChart.data.datasets[0].data =
-    values.map(v => parseFloat(v.close));
-  goldChart.update();
-}
-
-/* ================= CHART BUTTONS ================= */
-document.querySelectorAll(".chart-controls button")
-  .forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll(".chart-controls button")
-        .forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      loadGoldHistory(btn.dataset.range);
-    };
-  });
-
-/* ================= INIT ================= */
 loadPrices();
-loadGoldHistory("1D");
 </script>
 
 </body>
 </html>
-
